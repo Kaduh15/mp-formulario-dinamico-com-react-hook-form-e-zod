@@ -1,27 +1,30 @@
 import { EyeIcon, EyeOffIcon } from "lucide-react";
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 
-type InputPasswordProps = {
-  id: string;
-}
+type InputPasswordProps = React.InputHTMLAttributes<HTMLInputElement>
 
-export default function InputPassword({id}: InputPasswordProps) {
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-
-  function togglePasswordVisibility() {
-    setShowPassword((prev) => !prev)
-  }
+const  InputPassword = forwardRef<HTMLInputElement, InputPasswordProps>(({ id, ...props }, ref) => {
+  const [showPassword, setShowPassword] = useState(false)
 
   return (
     <div className="relative">
-      <input type={showPassword ? "text" : 'password'} id={id} />
-      <span className="absolute right-3 top-3" onClick={togglePasswordVisibility}>
-        {showPassword && <EyeIcon size={20} className="text-slate-600 cursor-pointer" />}
-        {!showPassword && <EyeOffIcon
-          className="text-slate-600 cursor-pointer"
-          size={20}
-        />}
-      </span>
+      <input
+        type={showPassword ? "text" : "password"}
+        id={id}
+        {...props}
+        ref={ref}
+      />
+      <button
+        type="button"
+        className="absolute right-0 top-0 p-2"
+        onClick={() => setShowPassword(!showPassword)}
+      >
+        {showPassword ? <EyeOffIcon size={24} /> : <EyeIcon size={24} />}
+      </button>
     </div>
   )
-}
+})
+
+InputPassword.displayName = 'InputPassword'
+
+export default InputPassword
