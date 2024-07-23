@@ -1,7 +1,8 @@
-import { EyeIcon } from 'lucide-react';
-// import { EyeOffIcon } from 'lucide-react';
+import InputPassword from "./InputPassword";
 
 export default function Form() {
+
+
   return (
     <form>
       <div className="mb-4">
@@ -18,29 +19,11 @@ export default function Form() {
       </div>
       <div className="mb-4">
         <label htmlFor="password">Senha</label>
-        <div className="relative">
-          <input type="password" id="password" />
-          <span className="absolute right-3 top-3">
-            <EyeIcon size={20} className="text-slate-600 cursor-pointer" />
-            {/* <EyeOffIcon
-                      className="text-slate-600 cursor-pointer"
-                      size={20}
-                    /> */}
-          </span>
-        </div>
+        <InputPassword id="password" />
       </div>
       <div className="mb-4">
         <label htmlFor="confirm-password">Confirmar Senha</label>
-        <div className="relative">
-          <input type="password" id="confirm-password" />
-          <span className="absolute right-3 top-3">
-            <EyeIcon size={20} className="text-slate-600 cursor-pointer" />
-            {/* <EyeOffIcon
-                  className="text-slate-600 cursor-pointer"
-                  size={20}
-                /> */}
-          </span>
-        </div>
+        <InputPassword id="confirm-password" />
       </div>
       <div className="mb-4">
         <label htmlFor="phone">Telefone Celular</label>
