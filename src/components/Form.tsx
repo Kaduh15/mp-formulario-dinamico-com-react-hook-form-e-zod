@@ -1,18 +1,74 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { withHookFormMask } from "use-mask-input";
 import { z } from "zod";
 import ErrorMessageForm from "./ErrorMessageForm";
 import InputPassword from "./InputPassword";
-import { withHookFormMask } from "use-mask-input";
-import axios from "axios";
+
+function validateCPF(cpf: string): boolean {
+  cpf = cpf.replace(/\D/g, '');
+
+  if (cpf.length !== 11) {
+      return false;
+  }
+
+  const invalidCPFs = [
+      '00000000000',
+      '11111111111',
+      '22222222222',
+      '33333333333',
+      '44444444444',
+      '55555555555',
+      '66666666666',
+      '77777777777',
+      '88888888888',
+      '99999999999'
+  ];
+  if (invalidCPFs.includes(cpf)) {
+      return false;
+  }
+
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+      sum += parseInt(cpf.charAt(i)) * (10 - i);
+  }
+  let remainder = sum % 11;
+  const verifierDigit1 = remainder < 2 ? 0 : 11 - remainder;
+
+  if (parseInt(cpf.charAt(9)) !== verifierDigit1) {
+      return false;
+  }
+
+  sum = 0;
+  for (let i = 0; i < 10; i++) {
+      sum += parseInt(cpf.charAt(i)) * (11 - i);
+  }
+  remainder = sum % 11;
+  const verifierDigit2 = remainder < 2 ? 0 : 11 - remainder;
+
+  if (parseInt(cpf.charAt(10)) !== verifierDigit2) {
+      return false;
+  }
+
+  return true;
+}
 
 
 const formSchema = z.object({
-  name: z.string().min(3).max(255),
-  email: z.string().email(),
-  password: z.string().min(8),
-  confirmPassword: z.string().min(8),
-  terms: z.boolean(),
+  name: z.string().min(3, 'O nome deve ter mais 3 letras').max(255),
+  email: z.string().email('E-mail inválido'),
+  password: z.string().min(8, 'A senha deve ter no mínimo 8 caracteres'),
+  confirmPassword: z.string().min(8, 'A senha deve ter no mínimo 8 caracteres'),
+  terms: z.boolean({
+    required_error: 'Você deve aceitar os termos e condições'
+  }).refine((data) => {
+    console.log("🚀 ~ data:", data)
+    return data
+  }, {
+    message: 'Você deve aceitar os termos e condições',
+  }),
   phone: z.string().max(20),
   cpf: z.string().max(14),
   zipCode: z.string().max(9),
@@ -20,7 +76,18 @@ const formSchema = z.object({
     address: z.string().max(255),
     city: z.string().max(255),
   }),
-  city: z.string().max(255),
+}).refine((data) => {
+  if (data.password !== data.confirmPassword) {
+    return false 
+  }
+
+  return true
+}, {
+  message: 'As senhas devem ser iguais',
+  path: ['confirmPassword'],
+  params: {
+    data: 'confirmPassword',
+  }
 })
 
 export type FormSchema = z.infer<typeof formSchema>
@@ -41,6 +108,7 @@ export interface responseZipCode {
 
 
 export default function Form() {
+  const [cpfMessageError, setCpfMessageError] = useState<string | undefined>()
 
   const {
     register,
@@ -65,6 +133,17 @@ export default function Form() {
     },
   })
 
+  const cpfWithMask = withHookFormMask(register('cpf'), '999.999.999-99', {
+    async oncomplete() {
+      console.log('watch cpf', validateCPF(watch('cpf')))
+      if (validateCPF(watch('cpf'))) {
+        setCpfMessageError(undefined)
+        return 
+      }
+      setCpfMessageError('CPF inválido')
+    }
+  })
+
   const onSubmit = handleSubmit((data) => {
     console.log("🚀 ~ onSubmit ~ data:", data)
   })
@@ -84,10 +163,12 @@ export default function Form() {
       <div className="mb-4">
         <label htmlFor="password">Senha</label>
         <InputPassword id="password" {...register('password')} />
+        <ErrorMessageForm message={errors.password?.message} />
       </div>
       <div className="mb-4">
         <label htmlFor="confirm-password">Confirmar Senha</label>
         <InputPassword id="confirm-password" {...register('confirmPassword')} />
+        <ErrorMessageForm message={errors.confirmPassword?.message} />
       </div>
       <div className="mb-4">
         <label htmlFor="phone">Telefone Celular</label>
@@ -95,7 +176,8 @@ export default function Form() {
       </div>
       <div className="mb-4">
         <label htmlFor="cpf">CPF</label>
-        <input type="text" id="cpf" {...register('cpf')} />
+        <input type="text" id="cpf" {...cpfWithMask} />
+        <ErrorMessageForm message={cpfMessageError} />
       </div>
       <div className="mb-4">
         <label htmlFor="cep">CEP</label>
@@ -137,6 +219,7 @@ export default function Form() {
             termos e condições
           </span>
         </label>
+        <ErrorMessageForm message={errors.terms?.message} />
       </div>
 
       <button
