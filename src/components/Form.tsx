@@ -1,3 +1,4 @@
+import ErrorMessageForm from "./ErrorMessageForm";
 import InputPassword from "./InputPassword";
 
 export default function Form() {
@@ -8,10 +9,7 @@ export default function Form() {
       <div className="mb-4">
         <label htmlFor="name">Nome Completo</label>
         <input type="text" id="name" />
-        {/* Sugestão de exibição de erro de validação */}
-        <div className="min-h-4">
-          <p className="text-xs text-red-400 mt-1">O nome é obrigatório.</p>
-        </div>
+        <ErrorMessageForm />
       </div>
       <div className="mb-4">
         <label htmlFor="email">E-mail</label>
