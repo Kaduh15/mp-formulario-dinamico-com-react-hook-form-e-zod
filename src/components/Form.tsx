@@ -11,45 +11,45 @@ function validateCPF(cpf: string): boolean {
   cpf = cpf.replace(/\D/g, '');
 
   if (cpf.length !== 11) {
-      return false;
+    return false;
   }
 
   const invalidCPFs = [
-      '00000000000',
-      '11111111111',
-      '22222222222',
-      '33333333333',
-      '44444444444',
-      '55555555555',
-      '66666666666',
-      '77777777777',
-      '88888888888',
-      '99999999999'
+    '00000000000',
+    '11111111111',
+    '22222222222',
+    '33333333333',
+    '44444444444',
+    '55555555555',
+    '66666666666',
+    '77777777777',
+    '88888888888',
+    '99999999999'
   ];
   if (invalidCPFs.includes(cpf)) {
-      return false;
+    return false;
   }
 
   let sum = 0;
   for (let i = 0; i < 9; i++) {
-      sum += parseInt(cpf.charAt(i)) * (10 - i);
+    sum += parseInt(cpf.charAt(i)) * (10 - i);
   }
   let remainder = sum % 11;
   const verifierDigit1 = remainder < 2 ? 0 : 11 - remainder;
 
   if (parseInt(cpf.charAt(9)) !== verifierDigit1) {
-      return false;
+    return false;
   }
 
   sum = 0;
   for (let i = 0; i < 10; i++) {
-      sum += parseInt(cpf.charAt(i)) * (11 - i);
+    sum += parseInt(cpf.charAt(i)) * (11 - i);
   }
   remainder = sum % 11;
   const verifierDigit2 = remainder < 2 ? 0 : 11 - remainder;
 
   if (parseInt(cpf.charAt(10)) !== verifierDigit2) {
-      return false;
+    return false;
   }
 
   return true;
@@ -60,7 +60,7 @@ const formSchema = z.object({
   name: z.string().min(3, 'O nome deve ter mais 3 letras').max(255),
   email: z.string().email('E-mail inválido'),
   password: z.string().min(8, 'A senha deve ter no mínimo 8 caracteres'),
-  confirmPassword: z.string().min(8, 'A senha deve ter no mínimo 8 caracteres'),
+  password_confirmation: z.string().min(8, 'A senha deve ter no mínimo 8 caracteres'),
   terms: z.boolean({
     required_error: 'Você deve aceitar os termos e condições'
   }).refine((data) => {
@@ -71,28 +71,26 @@ const formSchema = z.object({
   }),
   phone: z.string().max(20),
   cpf: z.string().max(14),
-  zipCode: z.string().max(9),
-  address: z.object({
-    address: z.string().max(255),
-    city: z.string().max(255),
-  }),
+  zipcode: z.string().max(9),
+  address: z.string().max(255),
+  city: z.string().max(255),
 }).refine((data) => {
-  if (data.password !== data.confirmPassword) {
-    return false 
+  if (data.password !== data.password_confirmation) {
+    return false
   }
 
   return true
 }, {
   message: 'As senhas devem ser iguais',
-  path: ['confirmPassword'],
+  path: ['password_confirmation'],
   params: {
-    data: 'confirmPassword',
+    data: 'password_confirmation',
   }
 })
 
 export type FormSchema = z.infer<typeof formSchema>
 
-export interface responseZipCode {
+export interface ResponseZipCode {
   cep: string
   logradouro: string
   complemento: string
@@ -106,6 +104,25 @@ export interface responseZipCode {
   siafi: string
 }
 
+export interface ResponseSubmit {
+  message: string
+  user: User
+}
+
+export interface User {
+  name: string
+  email: string
+  password: string
+  password_confirmation: string
+  terms: boolean
+  phone: string
+  cpf: string
+  zipcode: string
+  address: string
+  city: string
+}
+
+
 
 export default function Form() {
   const [cpfMessageError, setCpfMessageError] = useState<string | undefined>()
@@ -115,37 +132,45 @@ export default function Form() {
     handleSubmit,
     formState: { errors },
     watch,
-    setValue
+    setValue,
   } = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
   })
 
   let zipCodeMessageError: string | undefined
 
-  const zipCodeWithMask = withHookFormMask(register('zipCode'), '99999-999', {
+  const zipCodeWithMask = withHookFormMask(register('zipcode'), '99999-999', {
     async oncomplete() {
-      const { data, status } = await axios.get<responseZipCode>(`https://viacep.com.br/ws/${watch('zipCode')}/json/`)
+      const { data, status } = await axios.get<ResponseZipCode>(`https://viacep.com.br/ws/${watch('zipcode')}/json/`)
       if (status !== 200) return zipCodeMessageError = 'CEP não encontrado'
       zipCodeMessageError = undefined
-      setValue('address.city', data.localidade)
+      setValue('city', data.localidade)
       console.log("🚀 ~ oncomplete ~ data:", data)
-      setValue('address.address', data.logradouro || 'Sem dados')
+      setValue('address', data.logradouro || 'Sem dados')
     },
   })
 
   const cpfWithMask = withHookFormMask(register('cpf'), '999.999.999-99', {
     async oncomplete() {
-      console.log('watch cpf', validateCPF(watch('cpf')))
       if (validateCPF(watch('cpf'))) {
         setCpfMessageError(undefined)
-        return 
+        return
       }
       setCpfMessageError('CPF inválido')
     }
   })
 
-  const onSubmit = handleSubmit((data) => {
+  const onSubmit = handleSubmit(async (data) => {
     console.log("🚀 ~ onSubmit ~ data:", data)
+
+    const { data: dataResponse, status } = await axios.post<ResponseSubmit>('https://apis.codante.io/api/register-user/register', data)
+    if (status !== 200) {
+      console.log("🚀 ~ onSubmit ~ dataResponse:", dataResponse)
+      alert(dataResponse)
+      return
+
+    }
+    console.log("🚀 ~ onSubmit ~ dataResponse:", dataResponse)
   })
 
 
@@ -167,8 +192,8 @@ export default function Form() {
       </div>
       <div className="mb-4">
         <label htmlFor="confirm-password">Confirmar Senha</label>
-        <InputPassword id="confirm-password" {...register('confirmPassword')} />
-        <ErrorMessageForm message={errors.confirmPassword?.message} />
+        <InputPassword id="confirm-password" {...register('password_confirmation')} />
+        <ErrorMessageForm message={errors.password_confirmation?.message} />
       </div>
       <div className="mb-4">
         <label htmlFor="phone">Telefone Celular</label>
@@ -192,7 +217,7 @@ export default function Form() {
           id="address"
           disabled
 
-          {...register('address.address')}
+          {...register('address')}
         />
       </div>
 
@@ -204,7 +229,7 @@ export default function Form() {
           id="city"
           disabled
 
-          {...register('address.city')}
+          {...register('city')}
         />
       </div>
       {/* terms and conditions input */}
